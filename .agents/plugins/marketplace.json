@@ -1,0 +1,20 @@
+{
+  "name": "stm32f1-dev-skills",
+  "interface": {
+    "displayName": "STM32F1DevSkills"
+  },
+  "plugins": [
+    {
+      "name": "stm32f1-dev-skills",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

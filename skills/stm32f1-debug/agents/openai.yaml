@@ -1,0 +1,6 @@
+interface:
+  display_name: "STM32F1 调试"
+  short_description: "使用 GDB 和板端证据诊断 F1 启动、HardFault、外设与任务"
+  default_prompt: "使用 $stm32f1-debug 完成当前 STM32F1 调试任务，确认实际型号、CMake 工程和工具版本，按需求选择操作并检查结果。"
+policy:
+  allow_implicit_invocation: true

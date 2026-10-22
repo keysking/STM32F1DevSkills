@@ -1,0 +1,6 @@
+interface:
+  display_name: "STM32F1 构建"
+  short_description: "构建 F1 CMake 固件，定位编译链接错误并检查 ELF 与内存布局"
+  default_prompt: "使用 $stm32f1-build 完成当前 STM32F1 构建任务，确认实际型号、CMake 工程和工具版本，按需求选择操作并检查结果。"
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "stm32f1-dev-skills",
+  "version": "0.1.0",
+  "description": "通过传统 CubeMX、cube 与原生工具完成 STM32F1 CMake 工程的环境、配置、固件、构建、烧录与调试。",
+  "author": {
+    "name": "STM32F1DevSkills contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "stm32f1",
+    "stm32f103",
+    "cubemx",
+    "cube",
+    "cmake",
+    "hal",
+    "freertos",
+    "embedded"
+  ],
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "STM32F1DevSkills",
+        "shortDescription": "面向 STM32F1 CMake 工程的七项开发技能与场景参考",
+        "longDescription": "使用传统 CubeMX、STM32CubeF1 HAL/LL、cube 和原生工具完成 F1 开发。覆盖裸机与 FreeRTOS，提供三平台工具定位、外设参数、应用与故障处理指导。",
+        "developerName": "STM32F1DevSkills contributors",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Read",
+          "Write"
+        ]
+      }
+    }
+  }
+}

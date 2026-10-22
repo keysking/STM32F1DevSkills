@@ -29,7 +29,7 @@ cube ninja --version
 cube programmer --help
 ```
 
-`--list` 显示当前可调用入口；Bundle JSON 的 `details.name`、版本和 `path` 用于定位实际安装。按返回的目录查 GCC 的 `bin/arm-none-eabi-gcc`、Ninja、GDB 等。需要改变 Bundle 时继续读 `cube bundle` 对应子命令的 `--help`，按项目版本安装，不把当前列表视为固定全集。
+`--list` 显示当前可调用入口；Bundle JSON 的 `details.name`、版本和 `path` 用于定位实际安装。按返回的目录查 GCC 的 `bin/arm-none-eabi-gcc`、Ninja、GDB 等。需要改变 Bundle 时按[安装与恢复](install.md)查询当前接口和项目版本，不把当前列表视为固定全集，也不假设所有修改子命令都会处理 `--help`。
 
 `cube` 可找到 CMake 不等于 CMake 子进程可找到 GCC 和 Ninja。构建前将已确认的编译器 bin 与 Ninja 所在目录加入**当前构建进程** PATH；方法见[CMake](../../stm32f1-build/references/cmake.md)。不要修改系统 PATH 来掩盖工程缓存中的旧编译器路径。
 
@@ -66,7 +66,7 @@ Linux 先 `command -v STM32CubeMX`，再看已安装的 `.desktop` 启动项 `Ex
 
 - CubeCLI 工具 Bundle、CubeMX 的 STM32CubeF1 固件库、CMSIS-Pack 是不同对象；找到编译器 Bundle 不等于 HAL/FreeRTOS 库已安装。
 - 指定已有固件库时可在 CubeMX 会话调用 `project setCustomFWPath "实际固件包目录"`，再保存并核对 IOC 路径与生成源码。目录应包含 `Drivers`、`package.xml`，按需求包含 `Middlewares`。
-- 缺包时从 ST 安装渠道取得匹配版本；需要账户的下载采用工具支持的认证流程，不把密码写进脚本或日志。`swmgr` 的安装格式先读当前会话帮助。
+- 缺包时按[安装与恢复](install.md)选择 ST 管理器、本地包或官方 Git 源；`swmgr` 的安装格式与许可交互先读当前会话帮助，不把可能等待输入的 ask 直接交给非交互进程。
 - 使用 Git 获取官方 STM32CubeF1 时检查嵌套依赖是否完整；不要看到顶层目录就以为 HAL、CMSIS、RTOS 已有源码。已有发布包和 Git checkout 的布局/版本约束可能不同。
 - FreeRTOS 使用工程真实内核、适配层和 Cortex-M3 port。数据库版本标签不等于实际内核版本。
 

@@ -19,7 +19,7 @@
 | I2C BUSY/NACK | 实际地址及左移规则、上拉、电压、SDA/SCL 波形、对端状态；[I2C/SPI](../../stm32f1-configure/references/i2c-spi.md) |
 | SPI 数据错位 | CPOL/CPHA、位宽/顺序、CS 时序、收发缓冲和 OVR；[I2C/SPI](../../stm32f1-configure/references/i2c-spi.md) |
 | TIM 无输出/捕获 | GPIO 复用、MSP PostInit、通道 Start、CCR、共享 PSC/ARR、实际信号；[TIM](../../stm32f1-configure/references/timers.md) |
-| ADC 值异常/不更新 | 模拟引脚、参考电压、ADC 时钟、校准、采样时间、触发/序列/DMA；[ADC](../../stm32f1-configure/references/adc.md) |
+| ADC 值异常/不更新 | 模拟引脚、参考电压、ADC 时钟、校准、采样时间、触发/序列/DMA；F1 regular 多 rank 中断只得到末次转换，不能在回调循环读 DR 恢复全部数据；[ADC](../../stm32f1-configure/references/adc.md) |
 | CAN 无 ACK/Bus-off | 收发器、端接、位时序、过滤、启动/通知、错误计数；[CAN](../../stm32f1-configure/references/can-usb.md) |
 | USB 不枚举/BUSY | 48 MHz 与精度、D+/D−、上拉、IRQ、类注册、配置状态与缓冲所有权；[USB](../../stm32f1-configure/references/can-usb.md) |
 | RTC 重启丢时间 | VBAT、备份复位、无条件 SetTime/SetDate、软件日期状态；[RTC](../../stm32f1-configure/references/rtc.md) |

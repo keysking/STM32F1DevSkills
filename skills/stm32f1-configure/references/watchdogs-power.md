@@ -35,4 +35,64 @@ set ip parameters IWDG Reload 624
 
 STOP 恢复不宜机械重跑完整 `SystemClock_Config()`。按当前时钟状态构造恢复流程；HAL RCC 超时依赖 `HAL_GetTick()`，tick 停止时等待故障可能无限卡住，应先建立可用超时基准或采用独立有界等待。恢复后核对时钟寄存器、SystemCoreClock、HAL/OS tick 和外设速率。
 
+### 裸机 Sleep
+
+只有实际唤醒 IRQ 已配置、当前没有待处理工作、且不需要 HAL tick 周期唤醒时，可用：
+
+```c
+HAL_SuspendTick();
+HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+HAL_ResumeTick();
+```
+
+这段不负责应用的“检查工作→休眠”竞态；共享队列/事件状态须和中断配合，避免检查之后事件已处理而继续睡眠。IRQ 内不调用依赖已暂停 tick 的 HAL_Delay/超时等待。需要时间持续累计时另用实际持续运行的时间源。
+
+### 裸机 STOP 与时钟恢复
+
+需要 STOP 时，先按需求配置能在 STOP 中工作的 EXTI/RTC 闹钟等唤醒源，完成外设/DMA收尾并处理已有 pending；不要清掉尚未消费的业务事件。启用 PWR 时钟后，实际进入形式为：
+
+```c
+HAL_SuspendTick();
+HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+```
+
+这只是进入部分；返回后必须接上与实际时钟和 tick 所有者匹配的恢复。下面仅适用于 **F103、8 MHz HSE 晶体、PLL×9、AHB/1、APB1/2、APB2/1，裸机 HAL SysTick 时基** 的恢复函数形态；需要该时钟方案才采用，不用于 HSE bypass、连接型 F1、RTOS 或 HAL 定时器时基：
+
+```c
+static HAL_StatusTypeDef restore_f103_hse8_72(void)
+{
+    /* STOP 返回后运行于 HSI。先按当前频率重建超时 tick。 */
+    SystemCoreClockUpdate();
+    if (HAL_InitTick(uwTickPrio) != HAL_OK) return HAL_ERROR;
+    HAL_ResumeTick();
+
+    RCC_OscInitTypeDef osc = {0};
+    osc.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    osc.HSEState = RCC_HSE_ON;
+    osc.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+    osc.PLL.PLLState = RCC_PLL_ON;
+    osc.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    osc.PLL.PLLMUL = RCC_PLL_MUL9;
+    HAL_StatusTypeDef status = HAL_RCC_OscConfig(&osc);
+    if (status != HAL_OK) return status;
+
+    RCC_ClkInitTypeDef clk = {0};
+    clk.ClockType = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK |
+                    RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+    clk.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    clk.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    clk.APB1CLKDivider = RCC_HCLK_DIV2;
+    clk.APB2CLKDivider = RCC_HCLK_DIV1;
+    return HAL_RCC_ClockConfig(&clk, FLASH_LATENCY_2);
+}
+```
+
+调用时须处于允许 SysTick 正常抢占的线程上下文，不能保持 PRIMASK/BASEPRI 屏蔽或在高优先级 ISR 中等待 RCC。返回 HAL_OK 后再恢复依赖原频率的通信/采样；失败按应用策略保持可用 HSI、停止相关业务并报告故障，不能继续声称72 MHz已恢复。此函数不补偿休眠期间的时间，HAL 定时器时基和 RTOS 需要按其实际计时/调度恢复流程另写。
+
+### STANDBY 与启动判别
+
+只有允许复位式唤醒且数据已持久化时进入。按实际源选择 RTC 闹钟或 WKUP 引脚；使用 WKUP 时先核对电平不会立即触发，调用 `HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1)`。清理旧唤醒标志用 `__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WU)`，之后调用 `HAL_PWR_EnterSTANDBYMode()`；不得把这段接在 STOP 后当作下一步。
+
+复位启动早期、PWR 时钟使能后用 `__HAL_PWR_GET_FLAG(PWR_FLAG_SB)` 判别是否从 STANDBY 返回，记录原因后以 `__HAL_PWR_CLEAR_FLAG(PWR_FLAG_SB)` 清除。恢复备份数据而非普通RAM；RTC日期恢复仍遵循[备份域](rtc.md)。没有实际唤醒源时不进入该模式。
+
 完成验证包含实际唤醒源、时钟恢复、通信恢复、功耗测量与失败路径；调试连接会影响低功耗行为。依据：[RM0008](https://www.st.com/resource/en/reference_manual/cd00171190.pdf)及具体型号数据手册。

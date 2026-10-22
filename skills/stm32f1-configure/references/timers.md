@@ -58,3 +58,56 @@ set ip parameters TIM2 "Pulse-PWM Generation1 CH1" 250
 | 编码器 | 查 EncoderMode、IC1/IC2、滤波和 A/B 引脚；用 HAL_TIM_Encoder_Start，检查方向及 16 位回绕。 |
 
 模式修改会占用/替代既有通道；先查已有所有者。测量计算处理溢出、无信号和输入滤波影响。按[DMA/NVIC](dma-irq.md)补齐需要的链路，未要求的模式不启用。
+
+### 单通道输入捕获
+
+只有需要 TIM2_CH1 直接捕获 TI1 上升沿、每沿捕获且信号无需数字滤波时，可参考下列设置；滤波 0 和 DIV1 按信号质量/事件速率调整。先确认该通道未用于 PWM/编码器。
+
+```text
+set mode TIM2 Internal
+set mode TIM2 Input_Capture1_from_TI1
+set ip parameters TIM2 ICPolarity_CH1 TIM_INPUTCHANNELPOLARITY_RISING
+set ip parameters TIM2 "ICPrescaler-Input_Capture1_from_TI1" TIM_ICPSC_DIV1
+set ip parameters TIM2 ICFilter_CH1 0
+get ip parameters TIM2 ICPolarity_CH1
+get ip parameters TIM2 ICFilter_CH1
+```
+
+Prescaler/Period 按测量范围设置。保存重载生成后，应看到 DIRECTTI、对应极性/分频/滤波和 GPIO 输入。需要每次捕获中断时启用 TIM2_IRQn，并用 `HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1)`；在 `HAL_TIM_IC_CaptureCallback()` 判断 Instance 和 `htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1`，用 `HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1)` 读取。
+
+相邻同极性捕获值之差按 ARR+1 取模。只有测量间隔小于一个完整计数周期且 ICPSC=DIV1 时，频率为 `fTIM / ((PSC+1) × delta)`；不能把 delta=0 当作有效频率。可能跨多个回绕时扩展更新计数并处理更新/捕获先后，或调整 PSC。处理 overcapture、无信号超时；不能把旧 CCR 当作新测量。
+
+### PWM 输入测量
+
+只有需求为测量 TI1 高电平占空比，且可占用同一 TIM 的 CH1/CH2 和 slave reset 时使用。以下是当前模型的 PWM_Input_1 参数形式；不与上节模式同时启用：
+
+```text
+set mode TIM2 Internal
+set mode TIM2 PWM_Input_1
+set ip parameters TIM2 ICPolarity_1 TIM_INPUTCHANNELPOLARITY_RISING
+set ip parameters TIM2 ICFilter_1 0
+set ip parameters TIM2 ICFilter_2 0
+get ip parameters TIM2 ICPolarity_1
+```
+
+生成结果应为 CH1 DIRECTTI 上升沿、CH2 INDIRECTTI 下降沿、TIM_SLAVEMODE_RESET、TIM_TS_TI1FP1。模式名称不保证所有版本自动生成完整 slave 配置；缺项先查 TIM_SlaveMode/TIM_InputTrigger 当前键或 GUI，补齐后再继续。两通道 ICPSC 应为 DIV1，PSC/ARR 按范围计算。
+
+检查返回值，先 `HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2)`，再 `HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1)`；先使 CH2 就绪以捕获第一次完整高电平。在后续 CH1 周期边界读取同周期 CCR1/CCR2，舍弃启动后的不完整样本。该配置下频率约为 `fTIM / ((PSC+1) × CCR1)`，高电平占空比为 `CCR2 / CCR1`；不是对 CCR1 再加 1。验证 CCR1>0、CCR2<=CCR1、未溢出/overcapture，0%/100% 无边沿情况要用超时或额外电平判断，不能除零。
+
+### 正交编码器
+
+只有需要 A/B 正交计数且已确认两个输入引脚时使用。下列 TI12 选择双输入边沿计数；极性为不反相，滤波0仅适合已满足输入质量的情况：
+
+```text
+set mode TIM2 Encoder_Interface
+set ip parameters TIM2 EncoderMode TIM_ENCODERMODE_TI12
+set ip parameters TIM2 IC1Polarity TIM_ICPOLARITY_RISING
+set ip parameters TIM2 IC2Polarity TIM_ICPOLARITY_RISING
+set ip parameters TIM2 IC1Filter 0
+set ip parameters TIM2 IC2Filter 0
+get ip parameters TIM2 EncoderMode
+```
+
+确认生成 IC1/IC2 DIRECTTI、DIV1，PSC通常取0，计数范围由需求决定。这个模式的输入边沿决定计数，不用内部时钟更新频率公式解释转速。应用 `HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL)` 后用 `__HAL_TIM_GET_COUNTER()` 读计数；普通计数不必开启每沿中断。
+
+只有 ARR=65535 且两次读取间绝对位移小于32768计数时，才可用16位模差解释正负位移；其他 ARR 用实际模数处理，超限时提高采样率或扩展计数。转速换算先确认编码器 PPR 的厂家定义、x2/x4计数倍数、减速比和采样间隔。滤波会限制最高输入速率，不能只为消抖设最大值。

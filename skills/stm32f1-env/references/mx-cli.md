@@ -9,9 +9,9 @@
 核对安装自带 `jre/bin/java.exe`、`STM32CubeMX.l4j.ini` 等启动配置，读取其 JVM 参数。不要依赖 PATH 中碰巧存在的 Java。以下是 Java 21 配套发行版的启动形式；`$mxRoot`、`$script`、`$log` 均由当前任务提供的真实绝对路径赋值：
 
 ```powershell
-$mxRoot = Read-Host '传统 CubeMX 安装目录'
-$script = (Resolve-Path -LiteralPath (Read-Host '已准备的 CubeMX 脚本')).Path
-$log = Read-Host '本次日志文件的绝对路径'
+$mxRoot = 'D:/tools/STM32CubeMX' # 替换为已发现的安装目录
+$script = (Resolve-Path -LiteralPath 'D:/work/query.txt').Path # 替换为本次脚本
+$log = 'D:/work/query.log' # 替换为本次日志；父目录须存在
 $java = Join-Path $mxRoot 'jre/bin/java.exe'
 $jar = Join-Path $mxRoot 'STM32CubeMX.exe'
 if (!(Test-Path -LiteralPath $java) -or !(Test-Path -LiteralPath $jar)) {
@@ -30,6 +30,8 @@ finally { Pop-Location }
 
 JVM 选项在 `-jar` 之前，CubeMX 参数在归档路径之后。若安装自带启动配置不同，按其配置调整；发生模块访问或 Java 版本错误时先对照运行时，不盲目换系统 Java。
 
+这些路径直接由发现结果赋值，适用于非交互 Agent 进程，不使用 Read-Host 等等待键盘输入的方式。Windows PowerShell 5.1 的 Tee-Object 文件可能为 UTF-16；解析日志先识别 BOM/编码，不能按 UTF-8 错读后因搜不到 KO/Exception 而判为成功。
+
 ## Linux / macOS
 
 使用实际安装中的启动器，先切到它要求的工作目录。Linux 常见形式是安装目录下 `./STM32CubeMX`；macOS 使用应用包 `Contents` 内的实际启动器，先查看路径，注意 `MacOS`/`MacOs` 等名称的大小写。若发行版要求 Java 启动，使用其自带运行时及配置。
@@ -37,10 +39,10 @@ JVM 选项在 `-jar` 之前，CubeMX 参数在归档路径之后。若安装自�
 以下 Bash 中变量取实际路径；`script`、`log` 为绝对路径，`launcher` 是相对于该工作目录的真实启动器：
 
 ```bash
-read -r -p 'CubeMX 启动器工作目录: ' mx_dir
-read -r -p '启动器路径: ' launcher
-read -r -p '脚本绝对路径: ' script
-read -r -p '日志绝对路径: ' log
+mx_dir='/opt/STM32CubeMX' # 替换为实际启动器工作目录
+launcher='./STM32CubeMX' # 替换为实际启动器
+script='/work/query.txt' # 替换为本次脚本绝对路径
+log='/work/query.log' # 替换为本次日志绝对路径，父目录须存在
 test -f "$script" || exit 1
 cd "$mx_dir" || exit 1
 set -o pipefail

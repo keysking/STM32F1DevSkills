@@ -8,36 +8,21 @@
 | --- | --- | --- | --- |
 | 创建任务 | `xTaskCreate` / `xTaskCreateStatic` | `osThreadDef` + `osThreadCreate` | `osThreadNew` + `osThreadAttr_t` |
 | 延时 | `vTaskDelay`，单位 tick | `osDelay`，参数毫秒 | `osDelay`，单位内核 tick |
-| 队列 | `xQueueCreate/Send/Receive` | `osMessageQDef/Create/Put/Get` | `osMessageQueueNew/Put/Get` |
-| 互斥 | `xSemaphoreCreateMutex/Take/Give` | `osMutexCreate/Wait/Release` | `osMutexNew/Acquire/Release` |
+| 队列创建 | `xQueueCreate` | `osMessageQDef` + `osMessageCreate` | `osMessageQueueNew` |
+| 互斥创建 | `xSemaphoreCreateMutex` | `osMutexDef` + `osMutexCreate` | `osMutexNew` |
 | ISR 通知 | 对应 `...FromISR` | 仅允许的 ISR API | 仅允许的 ISR API，超时通常必须为 0 |
 
 FreeRTOS 原生任务栈深度以 StackType_t 元素计，F1 ARM_CM3 通常每项 4 字节。当前 CubeF1 CMSIS v1 适配层把任务定义栈大小直接传给 xTaskCreate，因此实际按栈字使用；不能只按通用 CMSIS 文档推断。CMSIS v2 `stack_size` 是字节。升级适配层时重新检查实现，生成器任务字段也要核对转换。
 
 `pdMS_TO_TICKS(ms)` 用于原生毫秒转换，转换后可能为 0；周期任务考虑 `vTaskDelayUntil`。v1 队列包装有消息宽度/指针约定，不能把任意结构体按 v2 `msg_size` 的用法直接传入；先查适配层，需要传结构体时选择原生队列或明确生命周期的对象指针。
 
-## 选择性调用形式
+## 按现有 API 选择操作参考
 
-需要新建原生任务时，形态如下，变量均由应用定义：
+- [原生 API](freertos-native.md)：任务、周期、复制队列、mutex、semaphore、ISR 和任务通知。
+- [CMSIS v1](freertos-cmsis-v1.md)：任务定义、32 位消息、signal，以及当前 ST 包装层的栈单位、零超时与返回值差异。
+- [CMSIS v2](freertos-cmsis-v2.md)：字节栈、tick、结构体消息、mutex、semaphore 和 flags。
 
-```c
-BaseType_t rc = xTaskCreate(worker, name, stack_words, context,
-                           priority, &task_handle);
-if (rc != pdPASS) { /* 应用处理内存或创建失败 */ }
-```
-
-需要 CMSIS v2 任务时，形态为：
-
-```c
-const osThreadAttr_t attr = {
-    .name = name,
-    .stack_size = stack_bytes,
-    .priority = osPriorityNormal
-};
-osThreadId_t id = osThreadNew(worker, context, &attr);
-```
-
-worker 的签名匹配所选 API。两段是不同创建方式，不创建两份相同任务；优先级和栈预算来自实际工作量。检查创建结果，不让自动存储期参数在任务开始后失效。调度器只启动一次，不能同时调用 `osKernelStart()` 和 `vTaskStartScheduler()`。
+只读取工程使用的一种；需要调用底层原生 API 时再读对应章节。调度器只启动一次，不能同时调用 `osKernelStart()` 和 `vTaskStartScheduler()`。
 
 ## 中断、锁与时间基准
 

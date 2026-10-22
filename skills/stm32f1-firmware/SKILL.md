@@ -11,6 +11,7 @@ license: MIT
 按当前任务读取：
 
 - HAL/LL、初始化、回调与异步缓冲区：[驱动与生命周期](references/hal-ll.md)。
+- 已选 LL，需要 GPIO、USART、IRQ/DMA API：[LL 操作](references/ll-operations.md)。
 - 应用模块、第三方驱动、SPL/寄存器代码接入：[移植与集成](references/porting.md)。
 - 任务、队列、同步、原生/CMSIS v1/v2：[FreeRTOS API](references/freertos.md)。
 - 片内 Flash、参数存储、bootloader 分区：[存储与启动布局](references/storage.md)。

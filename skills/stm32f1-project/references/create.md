@@ -27,7 +27,7 @@ waitclock 2
 
 确认 SDK 为目标工程需要的已安装 CubeF1 版本。以下会话命令中的目录仅为 Windows 语法说明；Linux/macOS 使用相应绝对路径。创建前确认目标子目录不存在或为空，不覆盖已有工程。
 
-本节命令接在上节 `load`/`waitclock` 后，在同一会话或脚本中执行；不能省略加载器件直接运行工程设置。
+本节命令接在上节 `load`/`waitclock` 后，在同一会话或脚本中执行；不能省略加载器件直接运行工程设置。新建开发工程默认保留 SWD，下面的 `Serial_Wire` 保留 PA13/PA14 调试功能。只有实际需求明确要求其他调试接口或释放这些引脚时才替换该模式，并安排对应连接/恢复方式；已有工程沿用其选择。
 
 ```text
 project name Control
@@ -35,11 +35,13 @@ project path "D:/firmware"
 project toolchain CMake
 project compiler GCC
 project setCustomFWPath "D:/SDK/STM32Cube_FW_F1_V1.8.7"
+set mode SYS Serial_Wire
+get mode active SYS
 config save
 exit
 ```
 
-需要 SWD、外设或指定时钟时，仅加入实际需求对应的配置。新工程默认内部时钟不是对板卡外部晶振的确认。
+外设和指定时钟仅加入实际需求对应的配置。新工程默认内部时钟不是对板卡外部晶振的确认。不能省略调试模式并假设生成器会保留 SWD：部分版本默认 No_Debug，会在 `HAL_MspInit()` 中生成 `__HAL_AFIO_REMAP_SWJ_DISABLE()`。
 
 实际保存路径通常包含工程名，例如 `D:/firmware/Control/Control.ioc`。找到真实文件，不只相信传给 `config save` 的路径；未设置工程名/目录的全新会话可能等待交互。
 
@@ -59,4 +61,4 @@ exit
 
 使用新进程避免新建会话中的生成状态问题；日志无异常且生成的路径、源文件存在才继续。`Src/Inc` 和 `Core/Src` 均可能有效，不为迎合模板无条件改目录。
 
-检查 `CMakeLists.txt`、`CMakePresets.json`、工具链、启动文件和链接脚本。C8T6 应为 Cortex-M3、`STM32F103xB`、Flash 64K、RAM 20K。按[构建指导](../../stm32f1-build/references/cmake.md)完成 configure/build 并核对 ELF。遇到重复绝对路径、sysmem/syscalls 缺失等见[生成故障](regenerate.md)。
+检查 `CMakeLists.txt`、`CMakePresets.json`、工具链、启动文件和链接脚本。C8T6 应为 Cortex-M3、`STM32F103xB`、Flash 64K、RAM 20K。保留 SWD 时核对 IOC 中 SYS 的 Serial_Wire 模式以及生成的 MSP：允许 `__HAL_AFIO_REMAP_SWJ_NOJTAG()`，不应出现关闭全部调试的 `__HAL_AFIO_REMAP_SWJ_DISABLE()`。按[构建指导](../../stm32f1-build/references/cmake.md)完成 configure/build 并核对 ELF。遇到重复绝对路径、sysmem/syscalls 缺失等见[生成故障](regenerate.md)。

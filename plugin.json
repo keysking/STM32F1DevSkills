@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "stm32f1-dev-skills",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "通过传统 CubeMX、cube 与原生工具完成 STM32F1 CMake 工程的环境、配置、固件、构建、烧录与调试。",
   "author": {
     "name": "STM32F1DevSkills contributors"

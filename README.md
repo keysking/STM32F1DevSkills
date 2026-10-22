@@ -22,7 +22,7 @@ cd STM32F1DevSkills
 PowerShell，在克隆目录执行：
 
 ```powershell
-$project = Read-Host '目标工程根目录的绝对路径'
+$project = 'D:/firmware/Control' # 替换为实际目标工程根目录
 if (-not (Test-Path -LiteralPath $project -PathType Container)) { throw '目标工程不存在' }
 $dest = Join-Path $project '.agents/skills'
 $skills = @(Get-ChildItem -LiteralPath './skills' -Directory -Filter 'stm32f1-*')
@@ -39,7 +39,7 @@ foreach ($skill in $skills) {
 Linux/macOS Bash，在克隆目录执行：
 
 ```bash
-read -r -p '目标工程根目录的绝对路径: ' project
+project='/work/Control' # 替换为实际目标工程根目录
 test -d "$project" || exit 1
 dest="$project/.agents/skills"
 skills=(skills/stm32f1-*)
@@ -55,7 +55,7 @@ for skill in "${skills[@]}"; do cp -R "$skill" "$dest/"; done
 
 ### Codex 插件
 
-插件标识 `stm32f1-dev-skills`，显示名 `STM32F1DevSkills`，版本 `0.1.0`，要求本地执行环境。根 `plugin.json` 和 `.codex-plugin/plugin.json` 使用同一份技能。
+插件标识 `stm32f1-dev-skills`，显示名 `STM32F1DevSkills`，版本 `0.1.1`，要求本地执行环境。根 `plugin.json` 和 `.codex-plugin/plugin.json` 使用同一份技能。
 
 在克隆目录使用支持插件命令的 Codex CLI：
 
@@ -108,12 +108,20 @@ codex plugin list
 - 先查当前模式、参数、帮助与实际 SDK 声明。工具查询缺项或报错时按文中方法查数据库/生成结果，不能猜测或跨系列套用。
 - 修改后回读并保存、独立重载；需要同步固件时生成、比较、构建。成功日志、配置落盘、代码正确和硬件功能分别检查。
 - API 片段需应用提供数据、生命周期、超时及错误处理，不要求复制演示业务。
+- shell 路径由 Agent 从发现结果直接赋值；示意路径须替换，不能等待无交互终端的输入。新建开发工程默认保留 SWD，其他引脚/调试需求按真实约束调整。
 
 ## 适用条件与边界
 
 命令参考基于传统 CubeMX 6.18.1、STM32CubeF1 1.8.7 / HAL 1.1.10、GCC 14.3.1、CMake 4.3.1；FreeRTOS 依据该 SDK 内核及适配层。实际项目版本优先，升级后重新查询。
 
 `STM32F103C8T6` 是主要核对型号，不是任意 F1 请求的默认芯片。其额定 Flash 为 64 KB、RAM 20 KB；共享模型名 `STM32F103C(8-B)Tx` 和宏 `STM32F103xB` 不意味着应选择 CB。F100/F101/F102/F105/F107 及其他容量型号的时钟、引脚、外设和内存按实际器件确认，不能直接套用 C8 参数。
+
+| 范围 | 使用边界 |
+| --- | --- |
+| F103C8 常见开发 | 提供具体 CubeMX 参数和 HAL/LL/API 操作参考；硬件电气与运行结果按实际板卡验证。 |
+| 其他 F1 型号/容量 | 复用工具发现、工程与 CMake 方法；外设、时钟节点、引脚、DMA映射先查该型号，不宣称所有型号参数均已实测。 |
+| FSMC、SDIO、Ethernet/LwIP、USB Host 等型号专属能力 | 当前不提供完整专题操作手册；从准确型号数据手册、对应 CubeF1 例程和驱动源码建立所需配置，不能套用 C8 模板。 |
+| Windows / Linux / macOS | 统一方法配平台入口；Windows执行核对，Linux/macOS仍需在目标主机核实安装布局和运行依赖。 |
 
 三平台均有操作指导；本版实际执行检查在 Windows，Linux/macOS 为文档和命令形式核对。构建、下载校验和板端功能是不同完成状态。外设电气、时序、任务和低功耗效果需在实际硬件验证。
 

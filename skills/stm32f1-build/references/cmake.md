@@ -7,8 +7,8 @@
 先定位 GCC、Ninja、CMake，见[工具定位](../../stm32f1-env/references/tools.md)。工具不在 PATH 时，PowerShell 在当前进程中设置：
 
 ```powershell
-$gccBin = Read-Host '实际 GCC bin 目录'
-$ninjaDir = Read-Host '实际 Ninja 所在目录'
+$gccBin = 'D:/toolchains/arm-gcc/bin' # 替换为已定位的真实目录
+$ninjaDir = 'D:/tools/ninja' # 替换为已定位的真实目录
 if (-not (Test-Path -LiteralPath (Join-Path $gccBin 'arm-none-eabi-gcc.exe'))) { throw 'GCC 路径无效' }
 if (-not (Test-Path -LiteralPath (Join-Path $ninjaDir 'ninja.exe'))) { throw 'Ninja 路径无效' }
 $env:PATH = "$gccBin;$ninjaDir;$env:PATH"
@@ -18,8 +18,8 @@ cube cmake --list-presets
 Linux/macOS Bash 使用实际已解析的目录，设置仅影响当前终端及子进程：
 
 ```bash
-read -r -p 'GCC bin 目录: ' gcc_bin
-read -r -p 'Ninja 所在目录: ' ninja_dir
+gcc_bin='/opt/arm-gcc/bin' # 替换为已定位的真实目录
+ninja_dir='/opt/ninja' # 替换为已定位的真实目录
 test -x "$gcc_bin/arm-none-eabi-gcc" && test -x "$ninja_dir/ninja" || exit 1
 export PATH="$gcc_bin:$ninja_dir:$PATH"
 cube cmake --list-presets
@@ -56,10 +56,12 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE App)
 add_library(app OBJECT App/app.c)
 target_include_directories(app PUBLIC App)
 target_link_libraries(app PRIVATE stm32cubemx)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE app)
+target_link_libraries(${CMAKE_PROJECT_NAME} app)
 ```
 
-这是替代组织形式，不与前一段重复注册同一源。`stm32cubemx` 名称从实际生成文件确认，不能在不含该目标的手写工程中照抄。生成器管理的 `cmake/stm32cubemx/CMakeLists.txt` 可能被覆盖，应用扩展放根 CMake 或自己的 include 文件。
+这是替代组织形式，不与前一段重复注册同一源。CubeMX 生成的 executable 通常已使用无关键字的 `target_link_libraries`，上段最后一行与之保持一致；若实际工程该目标已使用 PRIVATE/PUBLIC/INTERFACE，则最后一行改用 `target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE app)`。同一目标不能混用两种签名；新建 `app` 目标的 PRIVATE 不受 executable 的签名影响。
+
+`stm32cubemx` 名称从实际生成文件确认，不能在不含该目标的手写工程中照抄。生成器管理的 `cmake/stm32cubemx/CMakeLists.txt` 可能被覆盖，应用扩展放根 CMake 或自己的 include 文件。
 
 编译定义作用于目标：只对主 executable 加 PRIVATE 宏，不会自动影响独立 HAL/应用库。共享定义可放用户维护的 INTERFACE 目标并由需要的目标链接；检查 compile_commands 中每个相关源实际命令，避免只看到 main.c 带宏就认为全部生效。
 

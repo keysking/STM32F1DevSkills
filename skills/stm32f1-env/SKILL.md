@@ -12,6 +12,7 @@ F1 使用传统 CubeMX 的 `.ioc` 和 STM32CubeF1 的 HAL/LL，内核为 Cortex-
 
 1. 从现有 `.ioc`、CMake 预设、工具链文件和依赖声明确定所需版本；新工程先确认完整料号。
 2. 缺工具或路径时读取[工具与依赖](references/tools.md)。按 PATH、安装记录、有限候选目录定位，再执行版本/帮助确认身份。确认尚未安装或依赖损坏时，读[安装与恢复](references/install.md)。
+   如果当前环境找不到 `cube`，可以在 VS Code 的扩展页面找到 STM32CubeIDE Core，复用它自带的 `cube`。程序通常位于 `~/.vscode/extensions/stmicroelectronics.stm32cube-ide-core-*/resources/binaries/` 下对应的平台和架构目录。
 3. 需要操作 CubeMX 时读取[三平台启动与脚本会话](references/mx-cli.md)，使用当前安装的运行时和启动配置。
 4. 不清楚型号、容量或库层时读取[F1 基础与型号](references/f1-basics.md)。不要用 C8 的能力代替整个系列。
 5. 用版本查询、工程依赖路径和最小构建检查闭环。只有任务确实包含创建、配置或下载时才进入对应技能。

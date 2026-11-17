@@ -15,6 +15,7 @@ CubeMX 选择器中的商业料号、CLI 的器件参考名和内部共享模型
 当前传统 CubeMX 支持以下加载形式，仅在目标确为 C8T6 时使用：
 
 ```text
+popupwrapper set
 load STM32F103C8Tx STM32F103C8T6
 waitclock 2
 ```
@@ -52,6 +53,7 @@ exit
 用新进程执行：
 
 ```text
+popupwrapper set
 config load "D:/firmware/Control/Control.ioc"
 waitclock 2
 project generate

@@ -2,6 +2,17 @@
 
 本页说明工具入口；查询与修改脚本分开准备，只执行任务所需命令。F1 路线是传统 CubeMX，不是 CubeMX2；不能把 `cube mx` 的工程/参数命令套到这里。
 
+## 无人值守弹窗与恢复
+
+每个由 Agent 执行的 `-q` 脚本都以 `popupwrapper set` 开头、以 `exit` 结束，并设置进程超时、保留标准输出和错误日志。即使环境和入口已确认，每次独立会话仍需启用弹窗处理。
+
+- 对新发现的 CubeMX 版本，先用仅含 `popupwrapper set`、`get version`、`exit` 的会话探查，检查日志中 `popupwrapper set` 后的 `OK`。不支持时优先寻找匹配项目且支持该命令的安装。只能使用当前版本时，将操作分段并限制每段的等待时间，超时后结束本次会话并继续排查。
+- 对标题、含义、按钮映射都已核实的弹窗，可在 `popupwrapper set` 后、触发命令前加入 `popupwrapper record_answer "<弹窗标题>" <回答>`，例如关闭完成通知或取消打开 IDE。以当前版本的会话帮助和实际结果确认回答，避免仅凭 `YES` 或按钮顺序推断效果。在英文 6.18.1 中，`popupwrapper record_answer "New STM32Cube firmware version available" CANCEL` 可在无需迁移且有匹配安装可重试时自动取消当前加载。
+- 对未登记的弹窗，CubeMX 6.18.1 会返回选项值 `0`，通常是第一个选项，日志写出 `default Answer was returned`。让会话继续，随后核对弹窗、受影响的操作及产物。不能预判其影响的已有工程操作先在可恢复的工作副本中执行，核对 IOC、目标固件版本、生成文件和用户代码差异再应用结果。生成流程使用现有工程要求的版本和本地依赖，登录、许可证和有意迁移走各自的流程。
+- 遇到失败先从日志定位触发命令，尝试复用匹配的 CubeMX 和固件包、修正工程路径或配置，再从实际保存状态开始重试。若默认回答带来非预期结果，按已查明的弹窗指定回答或消除触发条件，并验证重试产物。并行推进可以独立完成的工作。只有关键步骤仍然受阻且需要用户决定时，才集中报告已完成的工作、尝试过的恢复和剩余影响。
+
+使用实际 Java 或会等待 CubeMX 结束的安装入口。启动前或未被 CubeMX 拦截的弹窗通过进程超时处理，只结束本次会话。确认会话执行到了 `exit`、关键命令没有 `KO`，并检查结果和产物。单独探查命令组用法时，`Usage` 后的 `KO` 可作为发现结果。
+
 ## Windows
 
 先按[工具定位](tools.md)找到安装目录。部分传统 CubeMX Windows 发行版的 `STM32CubeMX.exe` 本身可作为 Java 归档运行，这是该工具特有的布局，不是所有 exe 都能如此启动。
@@ -23,14 +34,23 @@ $jvm = @(
     '-Djavax.net.ssl.trustStoreType=WINDOWS-ROOT',
     '-Dsun.java2d.d3d=false', '-Dfile.encoding=UTF8'
 )
-Push-Location $mxRoot
-try { & $java @jvm '-jar' $jar '-q' $script 2>&1 | Tee-Object -FilePath $log }
-finally { Pop-Location }
+$arguments = $jvm + @('-jar', $jar, '-q', $script)
+$argLine = ($arguments | ForEach-Object { '"{0}"' -f $_ }) -join ' '
+$process = Start-Process -FilePath $java -ArgumentList $argLine -WorkingDirectory $mxRoot `
+    -RedirectStandardOutput $log -RedirectStandardError "$log.stderr" -WindowStyle Hidden -PassThru -ErrorAction Stop
+$null = $process.Handle # 保留进程句柄，Windows PowerShell 5.1 才能稳定读取 ExitCode
+if (!$process.WaitForExit(180000)) {
+    Stop-Process -InputObject $process -ErrorAction SilentlyContinue
+    throw "CubeMX 超时，检查 $log 和 $log.stderr"
+}
+if ($process.ExitCode -ne 0) {
+    throw "CubeMX 退出码 $($process.ExitCode)，检查 $log 和 $log.stderr"
+}
 ```
 
 JVM 选项在 `-jar` 之前，CubeMX 参数在归档路径之后。若安装自带启动配置不同，按其配置调整；发生模块访问或 Java 版本错误时先对照运行时，不盲目换系统 Java。
 
-这些路径直接由发现结果赋值，适用于非交互 Agent 进程，不使用 Read-Host 等等待键盘输入的方式。Windows PowerShell 5.1 的 Tee-Object 文件可能为 UTF-16；解析日志先识别 BOM/编码，不能按 UTF-8 错读后因搜不到 KO/Exception 而判为成功。
+这些路径直接由发现结果赋值。按操作规模调整示例中的 180 秒，按实际 CubeMX 输出编码读取原始日志。
 
 ## Linux / macOS
 
@@ -43,13 +63,19 @@ mx_dir='/opt/STM32CubeMX' # 替换为实际启动器工作目录
 launcher='./STM32CubeMX' # 替换为实际启动器
 script='/work/query.txt' # 替换为本次脚本绝对路径
 log='/work/query.log' # 替换为本次日志绝对路径，父目录须存在
-test -f "$script" || exit 1
 cd "$mx_dir" || exit 1
-set -o pipefail
-"$launcher" -q "$script" 2>&1 | tee "$log"
+if command -v timeout >/dev/null 2>&1; then
+    deadline=timeout
+elif command -v gtimeout >/dev/null 2>&1; then
+    deadline=gtimeout
+else
+    printf '%s\n' '用执行工具管理本次 CubeMX 进程的超时，然后再启动。' >&2
+    exit 1
+fi
+"$deadline" -k 5s 180s "$launcher" -q "$script" >"$log" 2>&1
 ```
 
-`-i` 进入交互模式；`-q` 执行安静脚本，`-s` 是普通脚本模式。第一次定位可用只含 `get version`、`help`、`exit` 的脚本。没有图形会话时是否可启动由当前发行版依赖决定；不能仅凭 `-q` 推断它没有 GUI 运行时依赖。
+`-i` 进入交互模式，`-q` 执行安静脚本，`-s` 是普通脚本模式。无图形会话时能否启动取决于当前发行版的运行依赖。
 
 ## 脚本上下文与结果
 
@@ -58,6 +84,7 @@ UTF-8 文本，每行一条 CubeMX 会话命令，以 `exit` 结束。会话命�
 已有工程查询的脚本形式（替换 IOC 路径）：
 
 ```text
+popupwrapper set
 config load "D:/firmware/Control/Control.ioc"
 waitclock 2
 get version
@@ -72,7 +99,6 @@ exit
 - 留存 stdout/stderr，INFO 行也可能包含有效参数值；不要一律删掉带时间戳的行。
 - 检查命令旁的 OK/KO、异常、生成结果。Java 进程退出 0 不保证每条命令成功；发生异常后脚本可能继续。
 - 裸命令用于查询 Usage 时出现 KO 与完整修改命令失败不同，分开解释。
-- 长时间无输出时检查是否在等保存位置、登录或弹窗。只终止本次启动且确认卡住的子进程，不结束用户其他 CubeMX/Java 会话。
 - 避免同一 IOC 同时被 GUI 和脚本编辑。涉及驱动切换或多项目时优先独立进程加载目标，减少上下文残留影响。
 
-命令入口依据：[CubeMX CLI](https://dev.st.com/stm32cube-docs/stm32cubemx/6.18.1/en/docs/markup/CubeMX_CLI.html)。详细硬件参数的发现方法见[配置操作基础](../../stm32f1-configure/references/operations.md)。
+命令入口依据为 [CubeMX CLI](https://dev.st.com/stm32cube-docs/stm32cubemx/6.18.1/en/docs/markup/CubeMX_CLI.html)和 [ST 的弹窗处理说明](https://community.st.com/stm32cubemx-mcus-29/partially-disabled-conflict-is-hindering-cicd-pipeline-153663)。详细硬件参数的发现方法见[配置操作基础](../../stm32f1-configure/references/operations.md)。

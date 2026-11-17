@@ -46,7 +46,7 @@ cube bundle install "cmake@4.3.1+st.1"
 
 从 [STM32CubeMX 产品下载页](https://www.st.com/en/development-tools/stm32cubemx.html)选择**传统 STM32CubeMX**与主机 OS/架构对应发行包；页面同时可能列出 CubeMX2，F1 `.ioc` 路线不因此改用 CubeMX2。Windows 解压并运行发行包内安装器；Linux 使用该发行包的 Linux 安装入口；macOS 打开对应应用/安装包。具体文件名随版本变化，以发行包内容和安装说明为准。
 
-需要账户下载时让官方认证流程处理，不把密码放进脚本。安装后定位运行时、启动配置和 db/mcu，按[mx-cli](mx-cli.md)执行仅含 `get version`、`help`、`exit` 的脚本。`cube mx` 若仍映射 CubeMX2，不替换它；直接调用已定位的传统 CubeMX。
+需要账户下载时让官方认证流程处理，不把密码放进脚本。安装后定位运行时、启动配置和 db/mcu，按[脚本入口](mx-cli.md#无人值守弹窗与恢复)探查版本和弹窗命令。`cube mx` 若仍映射 CubeMX2，直接调用已定位的传统 CubeMX。
 
 ## 缺少 CubeF1 固件库
 

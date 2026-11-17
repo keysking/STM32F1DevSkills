@@ -8,7 +8,7 @@ license: MIT
 
 先确认准确料号、板级接线、时钟来源和实际 `.ioc`。命令是按场景选择的参考，不是整篇执行清单；引脚、频率、实例和参数值来自本次需求与实际工程。GPIO 输出不隐含 EXTI/LL，阻塞通信不隐含 DMA，查询不修改配置。
 
-先读[操作基础](references/operations.md)，其中给出会话上下文、能力查询、参数枚举、失败判断和保存重载。工具不明时读[CubeMX 启动](../stm32f1-env/references/mx-cli.md)。
+先读[操作基础](references/operations.md)，其中给出会话上下文、能力查询、参数枚举、失败判断和保存重载。运行 CubeMX 前按[无人值守会话](../stm32f1-env/references/mx-cli.md#无人值守弹窗与恢复)准备每次脚本。
 
 只读取当前任务对应的文件：
 
